@@ -266,28 +266,27 @@ class BatchNormLayer(Layer):
     def get_output_for(self, input, type=None, deterministic=False,
                        batch_norm_use_averages=None,
                        batch_norm_update_averages=None, **kwargs):
-        
-        if type is None:
+         if type is None:
             input_mean = input.mean(self.axes)
             input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
-           # Decide whether to use the stored averages or mini-batch statistics
-           if batch_norm_use_averages is None:
-               batch_norm_use_averages = deterministic
-           use_averages = batch_norm_use_averages
+            # Decide whether to use the stored averages or mini-batch statistics
+         if batch_norm_use_averages is None:
+            batch_norm_use_averages = deterministic
+            use_averages = batch_norm_use_averages
    
-           if use_averages:
+            if use_averages:
                mean = self.mean
                inv_std = self.inv_std
-           else:
+            else:
                mean = input_mean
                inv_std = input_inv_std
    
            # Decide whether to update the stored averages
-           if batch_norm_update_averages is None:
+            if batch_norm_update_averages is None:
                batch_norm_update_averages = not deterministic
-           update_averages = batch_norm_update_averages
+            update_averages = batch_norm_update_averages
    
-           if update_averages:
+            if update_averages:
                # Trick: To update the stored statistics, we create memory-aliased
                # clones of the stored statistics:
                running_mean = theano.clone(self.mean, share_inputs=False)
