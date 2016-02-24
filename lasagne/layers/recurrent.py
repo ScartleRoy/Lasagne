@@ -876,19 +876,32 @@ class LSTMLayer(MergeLayer):
         self.nonlinearity_outgate) = add_gate_params(outgate, 'outgate')
         
         if batch_norm:
+            # add params for batch norm
             # add 4 batch norm layers for i, f, c and o
             num_batch = input_shape[0]
             n_time_step = input_shape[1]
-            self.bn_i = BatchNormLayer((num_batch, n_time_step, self.W_in_to_ingate.shape[1]), axes=(0,1))
-            self.bn_f = BatchNormLayer((num_batch, n_time_step, self.W_in_to_forgetgate.shape[1]), axes=(0,1))
-            self.bn_c = BatchNormLayer((num_batch, n_time_step, self.W_in_to_cell.shape[1]), axes=(0,1))
-            self.bn_o = BatchNormLayer((num_batch, n_time_step, self.W_in_to_outgate.shape[1]), axes=(0,1))
+            n_unit = self.W_in_to_ingate.shape[1]
             
-            # add params
-            self.params.update(self.bn_i.params)
-            self.params.update(self.bn_f.params)
-            self.params.update(self.bn_c.params)
-            self.params.update(self.bn_o.params)
+            def add_bn_params(bn_name, shape):
+            """ Convenience function for adding layer parameters for 
+            Batch Normalization. """
+            beta=init.Constant(0)
+            gamma=init.Constant(1)
+            mean=init.Constant(0)
+            inv_std=init.Constant(1)
+            return (self.add_param(beta, shape,
+                                   name="beta_{}".format(bn_name),
+                                   trainable=True, regularizable=False),
+                    self.add_param(gamma, shape,
+                                   name="gamma_{}".format(bn_name),
+                                   trainable=True, regularizable=True))
+
+            bn_shape = (n_time_step, num_batch)
+            (self.beta_i, self.gamma_i) = self.add_bn_params('i', bn_shape)
+            (self.beta_f, self.gamma_f) = self.add_bn_params('f', bn_shape)
+            (self.beta_c, self.gamma_c) = self.add_bn_params('c', bn_shape)
+            (self.beta_o, self.gamma_o) = self.add_bn_params('o', bn_shape)
+            
 
         # If peephole (cell to gate) connections were enabled, initialize
         # peephole connections.  These are elementwise products with the cell
@@ -930,7 +943,7 @@ class LSTMLayer(MergeLayer):
         else:
             return input_shape[0], input_shape[1], self.num_units
 
-    def get_output_for(self, inputs, **kwargs):
+    def get_output_for(self, inputs, deterministic=False, **kwargs):
         """
         Compute this layer's output function given a symbolic input variable
 
@@ -1007,14 +1020,25 @@ class LSTMLayer(MergeLayer):
             if not batch_norm:
                 input = T.dot(input, W_in_stacked) + b_stacked
             else:
-                input_i = T.dot(input, self.W_hid_to_ingate) + self.b_ingate
-                input_i = self.bn_i.get_output_for(input_i, **kwargs)
-                input_f = T.dot(input, self.W_hid_to_forgetgate) + self.b_forgetgate
-                input_f = self.bn_f.get_output_for(input_f, **kwargs)
-                input_c = T.dot(input, self.W_hid_to_cell) + self.b_cell
-                input_c = self.bn_c.get_output_for(input_c, **kwargs)
-                input_o = T.dot(input, self.W_hid_to_outgate) + self.b_outgate
-                input_o = self.bn_o.get_output_for(input_o, **kwargs)
+                # calculate mean and std for each gate
+                
+                def batch_norm(input, bn_type, epsilon=1e-4):
+                    """Apply batch normalization to a particular input."""
+                    (mean, var) = (T.mean(input, axis=(0,1)), T.var(input, axis=(0,1)))
+                    inv_std = T.inv(T.sqrt(var) + epsilon)
+                    if bn_type = 'i':
+                        return (input - mean) * (self.gamma_i * inv_std) + self.beta_i
+                    elif bn_type = 'f':
+                        return (input - mean) * (self.gamma_f * inv_std) + self.beta_f
+                    elif bn_type = 'c':
+                        return (input - mean) * (self.gamma_c * inv_std) + self.beta_c
+                    elif bn_type = 'o':
+                        return (input - mean) * (self.gamma_o * inv_std) + self.beta_o
+                    
+                input_i = batch_norm(T.dot(input, self.W_in_to_ingate), 'i')
+                input_f = batch_norm(T.dot(input, self.W_in_to_forgetgate), 'f')
+                input_c = batch_norm(T.dot(input, self.W_in_to_cell), 'c')
+                input_o = batch_norm(T.dot(input, self.W_in_to_outgate), 'o')
                 # concatenate
                 input = T.concatenate(input_i, input_f, input_c, input_o, axis=2)
 
