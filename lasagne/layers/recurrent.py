@@ -1025,13 +1025,13 @@ class LSTMLayer(MergeLayer):
                     """Apply batch normalization to a particular input."""
                     (mean, var) = (T.mean(input, axis=(0,1)), T.var(input, axis=(0,1)))
                     inv_std = T.inv(T.sqrt(var) + epsilon)
-                    if bn_type = 'i':
+                    if bn_type == 'i':
                         return (input - mean) * (self.gamma_i * inv_std) + self.beta_i
-                    elif bn_type = 'f':
+                    elif bn_type == 'f':
                         return (input - mean) * (self.gamma_f * inv_std) + self.beta_f
-                    elif bn_type = 'c':
+                    elif bn_type == 'c':
                         return (input - mean) * (self.gamma_c * inv_std) + self.beta_c
-                    elif bn_type = 'o':
+                    elif bn_type == 'o':
                         return (input - mean) * (self.gamma_o * inv_std) + self.beta_o
                     
                 input_i = batch_norm(T.dot(input, self.W_in_to_ingate), 'i')
