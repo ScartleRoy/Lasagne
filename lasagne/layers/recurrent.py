@@ -1011,6 +1011,8 @@ class LSTMLayer(MergeLayer):
             if not self.batch_norm:
                 input = T.dot(input, W_in_stacked) + b_stacked
             else:
+                print input.ndim
+                print input.shape
                 input_i = self.bn_i.get_output_for(T.dot(input, self.W_in_to_ingate), type='sequential', **kwargs)
                 input_f = self.bn_f.get_output_for(T.dot(input, self.W_in_to_forgetgate), type='sequential', **kwargs)
                 input_c = self.bn_c.get_output_for(T.dot(input, self.W_in_to_cell), type='sequential', **kwargs)
