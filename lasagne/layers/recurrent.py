@@ -837,6 +837,8 @@ class LSTMLayer(MergeLayer):
         self.unroll_scan = unroll_scan
         self.precompute_input = precompute_input
         self.only_return_final = only_return_final
+        self.batch_norm = batch_norm
+        self.batch_size = batch_size
 
         if unroll_scan and gradient_steps != -1:
             raise ValueError(
@@ -877,12 +879,12 @@ class LSTMLayer(MergeLayer):
         (self.W_in_to_outgate, self.W_hid_to_outgate, self.b_outgate,
         self.nonlinearity_outgate) = add_gate_params(outgate, 'outgate')
         
-        if batch_norm:
+        if self.batch_norm:
             # add 4 batch norm layers for i, f, c and o
-            print input_shape
-            n_time_step = input_shape[0]
+            print 'input shape', input_shape
+            n_time_step = input_shape[1]
             bn_shape = (n_time_step, batch_size, num_units)
-            print bn_shape
+            print 'bn shape', bn_shape
             
             self.bn_i = BatchNormLayer(bn_shape, axes=(0,1))  # create BN layer for correct input shape
             self.bn_f = BatchNormLayer(bn_shape, axes=(0,1))  # create BN layer for correct input shape
@@ -1008,7 +1010,7 @@ class LSTMLayer(MergeLayer):
             # precompute_input the inputs dot weight matrices before scanning.
             # W_in_stacked is (n_features, 4*num_units). input is then
             # (n_time_steps, n_batch, 4*num_units).
-            if not batch_norm:
+            if not self.batch_norm:
                 input = T.dot(input, W_in_stacked) + b_stacked
             else:
                 input_i = self.bn_i.get_output_for(T.dot(input, self.W_in_to_ingate), type='sequential', **kwargs)
