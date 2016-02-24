@@ -883,8 +883,7 @@ class LSTMLayer(MergeLayer):
             n_unit = self.W_in_to_ingate.shape[1]
             
             def add_bn_params(bn_name, shape):
-            """ Convenience function for adding layer parameters for 
-            Batch Normalization. """
+            """ Convenience function for adding layer parameters for Batch Normalization. """
             beta=init.Constant(0)
             gamma=init.Constant(1)
             mean=init.Constant(0)
