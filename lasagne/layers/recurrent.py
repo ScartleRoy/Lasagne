@@ -942,7 +942,7 @@ class LSTMLayer(MergeLayer):
         else:
             return input_shape[0], input_shape[1], self.num_units
 
-    def get_output_for(self, inputs, deterministic=False, **kwargs):
+    def get_output_for(self, inputs, **kwargs):
         """
         Compute this layer's output function given a symbolic input variable
 
