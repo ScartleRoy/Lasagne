@@ -883,17 +883,17 @@ class LSTMLayer(MergeLayer):
             n_unit = self.W_in_to_ingate.shape[1]
             
             def add_bn_params(bn_name, shape):
-            """ Convenience function for adding layer parameters for Batch Normalization. """
-            beta=init.Constant(0)
-            gamma=init.Constant(1)
-            mean=init.Constant(0)
-            inv_std=init.Constant(1)
-            return (self.add_param(beta, shape,
-                                   name="beta_{}".format(bn_name),
-                                   trainable=True, regularizable=False),
-                    self.add_param(gamma, shape,
-                                   name="gamma_{}".format(bn_name),
-                                   trainable=True, regularizable=True))
+                """ Convenience function for adding layer parameters for Batch Normalization. """
+                beta=init.Constant(0)
+                gamma=init.Constant(1)
+                mean=init.Constant(0)
+                inv_std=init.Constant(1)
+                return (self.add_param(beta, shape,
+                                       name="beta_{}".format(bn_name),
+                                       trainable=True, regularizable=False),
+                        self.add_param(gamma, shape,
+                                       name="gamma_{}".format(bn_name),
+                                       trainable=True, regularizable=True))
 
             bn_shape = (n_time_step, num_batch)
             (self.beta_i, self.gamma_i) = self.add_bn_params('i', bn_shape)
