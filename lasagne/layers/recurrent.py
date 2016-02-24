@@ -795,6 +795,7 @@ class LSTMLayer(MergeLayer):
                  precompute_input=True,
                  mask_input=None,
                  only_return_final=False,
+                 batch_norm=True,
                  **kwargs):
 
         # This layer inherits from a MergeLayer, because it can have four
