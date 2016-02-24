@@ -877,10 +877,12 @@ class LSTMLayer(MergeLayer):
         
         if batch_norm:
             # add 4 batch norm layers for i, f, c and o
-            self.bn_i = BatchNormLayer(tuple(list(input_shape[:-1]) + list(self.W_in_to_ingate.shape[:-2]) + list(self.W_in_to_ingate.shape[-1])), axes=(0,1))
-            self.bn_f = BatchNormLayer(tuple(list(input_shape[:-1]) + list(self.W_in_to_forgetgate.shape[:-2]) + list(self.W_in_to_forgetgate.shape[-1])), axes=(0,1))
-            self.bn_c = BatchNormLayer(tuple(list(input_shape[:-1]) + list(self.W_in_to_cell.shape[:-2]) + list(self.W_in_to_cell.shape[-1])), axes=(0,1))
-            self.bn_o = BatchNormLayer(tuple(list(input_shape[:-1]) + list(self.W_in_to_outgate.shape[:-2]) + list(self.W_in_to_outgate.shape[-1])), axes=(0,1))
+            num_batch = input_shape[0]
+            n_time_step = input_shape[1]
+            self.bn_i = BatchNormLayer((num_batch, n_time_step, self.W_in_to_ingate.shape[1]), axes=(0,1))
+            self.bn_f = BatchNormLayer((num_batch, n_time_step, self.W_in_to_forgetgate.shape[1]), axes=(0,1))
+            self.bn_c = BatchNormLayer((num_batch, n_time_step, self.W_in_to_cell.shape[1]), axes=(0,1))
+            self.bn_o = BatchNormLayer((num_batch, n_time_step, self.W_in_to_outgate.shape[1]), axes=(0,1))
             
             # add params
             self.params.update(self.bn_i.params)
