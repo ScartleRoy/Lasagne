@@ -263,45 +263,54 @@ class BatchNormLayer(Layer):
         self.inv_std = self.add_param(inv_std, shape, 'inv_std',
                                       trainable=False, regularizable=False)
 
-    def get_output_for(self, input, deterministic=False,
+    def get_output_for(self, input, type=None, deterministic=False,
                        batch_norm_use_averages=None,
                        batch_norm_update_averages=None, **kwargs):
-        input_mean = input.mean(self.axes)
-        input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
-
-        # Decide whether to use the stored averages or mini-batch statistics
-        if batch_norm_use_averages is None:
-            batch_norm_use_averages = deterministic
-        use_averages = batch_norm_use_averages
-
-        if use_averages:
-            mean = self.mean
-            inv_std = self.inv_std
-        else:
+        
+        if type is None:
+            input_mean = input.mean(self.axes)
+            input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
+           # Decide whether to use the stored averages or mini-batch statistics
+           if batch_norm_use_averages is None:
+               batch_norm_use_averages = deterministic
+           use_averages = batch_norm_use_averages
+   
+           if use_averages:
+               mean = self.mean
+               inv_std = self.inv_std
+           else:
+               mean = input_mean
+               inv_std = input_inv_std
+   
+           # Decide whether to update the stored averages
+           if batch_norm_update_averages is None:
+               batch_norm_update_averages = not deterministic
+           update_averages = batch_norm_update_averages
+   
+           if update_averages:
+               # Trick: To update the stored statistics, we create memory-aliased
+               # clones of the stored statistics:
+               running_mean = theano.clone(self.mean, share_inputs=False)
+               running_inv_std = theano.clone(self.inv_std, share_inputs=False)
+               # set a default update for them:
+               running_mean.default_update = ((1 - self.alpha) * running_mean +
+                                              self.alpha * input_mean)
+               running_inv_std.default_update = ((1 - self.alpha) *
+                                                 running_inv_std +
+                                                 self.alpha * input_inv_std)
+               # and make sure they end up in the graph without participating in
+               # the computation (this way their default_update will be collected
+               # and applied, but the computation will be optimized away):
+               mean += 0 * running_mean
+               inv_std += 0 * running_inv_std
+         else:
+            # perform sequential-wise batch normalization, which is suitable for RNN
+            # use the statistic of all the data in a mini-batch
+            input_mean = input.mean((0,1))
+            input_inv_std = T.inv(T.sqrt(input.var((0,1)) + self.epsilon))
             mean = input_mean
             inv_std = input_inv_std
-
-        # Decide whether to update the stored averages
-        if batch_norm_update_averages is None:
-            batch_norm_update_averages = not deterministic
-        update_averages = batch_norm_update_averages
-
-        if update_averages:
-            # Trick: To update the stored statistics, we create memory-aliased
-            # clones of the stored statistics:
-            running_mean = theano.clone(self.mean, share_inputs=False)
-            running_inv_std = theano.clone(self.inv_std, share_inputs=False)
-            # set a default update for them:
-            running_mean.default_update = ((1 - self.alpha) * running_mean +
-                                           self.alpha * input_mean)
-            running_inv_std.default_update = ((1 - self.alpha) *
-                                              running_inv_std +
-                                              self.alpha * input_inv_std)
-            # and make sure they end up in the graph without participating in
-            # the computation (this way their default_update will be collected
-            # and applied, but the computation will be optimized away):
-            mean += 0 * running_mean
-            inv_std += 0 * running_inv_std
+            
 
         # prepare dimshuffle pattern inserting broadcastable axes as needed
         param_axes = iter(range(input.ndim - len(self.axes)))
