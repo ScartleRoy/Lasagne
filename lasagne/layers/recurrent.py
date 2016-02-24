@@ -880,7 +880,8 @@ class LSTMLayer(MergeLayer):
             # add 4 batch norm layers for i, f, c and o
             num_batch = input_shape[0]
             n_time_step = input_shape[1]
-            bn_shape = (n_time_step, num_batch, num_units)
+            n_units = self.W_in_to_ingate.shape[-1]
+            bn_shape = (n_time_step, num_batch, n_units)
             
             self.bn_i = BatchNormLayer(bn_shape)  # create BN layer for correct input shape
             self.bn_f = BatchNormLayer(bn_shape)  # create BN layer for correct input shape
