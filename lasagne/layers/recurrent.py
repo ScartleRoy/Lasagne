@@ -884,10 +884,10 @@ class LSTMLayer(MergeLayer):
             n_time_step = input_shape[1]
             bn_shape = (n_time_step, batch_size, num_units)
             
-            self.bn_i = BatchNormLayer(bn_shape, axes=(0,1))  # create BN layer for correct input shape
-            self.bn_f = BatchNormLayer(bn_shape, axes=(0,1))  # create BN layer for correct input shape
-            self.bn_c = BatchNormLayer(bn_shape, axes=(0,1))  # create BN layer for correct input shape
-            self.bn_o = BatchNormLayer(bn_shape, axes=(0,1))  # create BN layer for correct input shape
+            self.bn_i = BatchNormLayer(bn_shape, type='LSTM', axes=(0,1))  # create BN layer for correct input shape
+            self.bn_f = BatchNormLayer(bn_shape, type='LSTM', axes=(0,1))  # create BN layer for correct input shape
+            self.bn_c = BatchNormLayer(bn_shape, type='LSTM', axes=(0,1))  # create BN layer for correct input shape
+            self.bn_o = BatchNormLayer(bn_shape, type='LSTM', axes=(0,1))  # create BN layer for correct input shape
             self.params.update(self.bn_i.params)  # make BN params your params
             self.params.update(self.bn_f.params)  # make BN params your params
             self.params.update(self.bn_c.params)  # make BN params your params
