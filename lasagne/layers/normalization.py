@@ -228,7 +228,8 @@ class BatchNormLayer(Layer):
            Internal Covariate Shift. http://arxiv.org/abs/1502.03167.
     """
     def __init__(self, incoming, type=None, axes='auto', epsilon=1e-4, alpha=0.1,
-                 beta=init.Constant(0), gamma=init.Constant(1), **kwargs):
+                 beta=init.Constant(0), gamma=init.Constant(1), mean=init.Constant(0),
+                 inv_std=init.Constant(1), **kwargs):
          super(BatchNormLayer, self).__init__(incoming, **kwargs)
 
          if axes == 'auto':
@@ -257,20 +258,18 @@ class BatchNormLayer(Layer):
          else:
             self.gamma = self.add_param(gamma, shape, 'gamma',
                                            trainable=True, regularizable=True)
-                                           
-         # if type is RNN, then need not to save the mean and var
-         if type is None:
-            mean=init.Constant(0)
-            inv_std=init.Constant(1),
+         
+         if type is not 'LSTM':                    
             self.mean = self.add_param(mean, shape, 'mean',
-                                      trainable=False, regularizable=False)
-            self.inv_std = self.add_param(inv_std, shape, 'inv_std',
                                          trainable=False, regularizable=False)
+            self.inv_std = self.add_param(inv_std, shape, 'inv_std',
+                                            trainable=False, regularizable=False)
+            
 
     def get_output_for(self, input, type=None, deterministic=False,
                        batch_norm_use_averages=None,
                        batch_norm_update_averages=None, **kwargs):
-         if type is None:
+         if type is not None:
             input_mean = input.mean(self.axes)
             input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
             # Decide whether to use the stored averages or mini-batch statistics
