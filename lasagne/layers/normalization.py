@@ -311,21 +311,21 @@ class BatchNormLayer(Layer):
             inv_std = input_inv_std
             
 
-        # prepare dimshuffle pattern inserting broadcastable axes as needed
-        param_axes = iter(range(input.ndim - len(self.axes)))
-        pattern = ['x' if input_axis in self.axes
+         # prepare dimshuffle pattern inserting broadcastable axes as needed
+         param_axes = iter(range(input.ndim - len(self.axes)))
+         pattern = ['x' if input_axis in self.axes
                    else next(param_axes)
                    for input_axis in range(input.ndim)]
 
-        # apply dimshuffle pattern to all parameters
-        beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
-        gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
-        mean = mean.dimshuffle(pattern)
-        inv_std = inv_std.dimshuffle(pattern)
+         # apply dimshuffle pattern to all parameters
+         beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
+         gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
+         mean = mean.dimshuffle(pattern)
+         inv_std = inv_std.dimshuffle(pattern)
 
-        # normalize
-        normalized = (input - mean) * (gamma * inv_std) + beta
-        return normalized
+         # normalize
+         normalized = (input - mean) * (gamma * inv_std) + beta
+         return normalized
 
 
 def batch_norm(layer, **kwargs):
