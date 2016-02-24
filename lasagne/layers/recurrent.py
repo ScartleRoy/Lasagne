@@ -859,21 +859,33 @@ class LSTMLayer(MergeLayer):
                                    name="b_{}".format(gate_name),
                                    regularizable=False),
                     gate.nonlinearity)
-        
-        if batch_norm:
-            # Add in parameters from the supplied Gate instances
-            (self.W_in_to_ingate, self.W_hid_to_ingate, self.b_ingate,
-             self.nonlinearity_ingate) = add_gate_params(ingate, 'ingate')
     
-            (self.W_in_to_forgetgate, self.W_hid_to_forgetgate, self.b_forgetgate,
-             self.nonlinearity_forgetgate) = add_gate_params(forgetgate,
+        # Add in parameters from the supplied Gate instances
+        (self.W_in_to_ingate, self.W_hid_to_ingate, self.b_ingate,
+        self.nonlinearity_ingate) = add_gate_params(ingate, 'ingate')
+    
+        (self.W_in_to_forgetgate, self.W_hid_to_forgetgate, self.b_forgetgate,
+        self.nonlinearity_forgetgate) = add_gate_params(forgetgate,
                                                              'forgetgate')
     
-            (self.W_in_to_cell, self.W_hid_to_cell, self.b_cell,
-             self.nonlinearity_cell) = add_gate_params(cell, 'cell')
+        (self.W_in_to_cell, self.W_hid_to_cell, self.b_cell,
+        self.nonlinearity_cell) = add_gate_params(cell, 'cell')
     
-            (self.W_in_to_outgate, self.W_hid_to_outgate, self.b_outgate,
-             self.nonlinearity_outgate) = add_gate_params(outgate, 'outgate')
+        (self.W_in_to_outgate, self.W_hid_to_outgate, self.b_outgate,
+        self.nonlinearity_outgate) = add_gate_params(outgate, 'outgate')
+        
+        if batch_norm:
+            # add 4 batch norm layers for i, f, c and o
+            self.bn_i = BatchNormLayer(tuple(list(input_shape[:-1]) + list(self.W_in_to_ingate.shape[:-2]) + list(self.W_in_to_ingate.shape[-1])), axes=(0,1))
+            self.bn_f = BatchNormLayer(tuple(list(input_shape[:-1]) + list(self.W_in_to_forgetgate.shape[:-2]) + list(self.W_in_to_forgetgate.shape[-1])), axes=(0,1))
+            self.bn_c = BatchNormLayer(tuple(list(input_shape[:-1]) + list(self.W_in_to_cell.shape[:-2]) + list(self.W_in_to_cell.shape[-1])), axes=(0,1))
+            self.bn_o = BatchNormLayer(tuple(list(input_shape[:-1]) + list(self.W_in_to_outgate.shape[:-2]) + list(self.W_in_to_outgate.shape[-1])), axes=(0,1))
+            
+            # add params
+            self.params.update(self.bn_i.params)
+            self.params.update(self.bn_f.params)
+            self.params.update(self.bn_c.params)
+            self.params.update(self.bn_o.params)
 
         # If peephole (cell to gate) connections were enabled, initialize
         # peephole connections.  These are elementwise products with the cell
