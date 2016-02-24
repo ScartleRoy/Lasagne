@@ -227,41 +227,44 @@ class BatchNormLayer(Layer):
            Batch Normalization: Accelerating Deep Network Training by Reducing
            Internal Covariate Shift. http://arxiv.org/abs/1502.03167.
     """
-    def __init__(self, incoming, axes='auto', epsilon=1e-4, alpha=0.1,
+    def __init__(self, incoming, type=None, axes='auto', epsilon=1e-4, alpha=0.1,
                  beta=init.Constant(0), gamma=init.Constant(1),
                  mean=init.Constant(0), inv_std=init.Constant(1), **kwargs):
-        super(BatchNormLayer, self).__init__(incoming, **kwargs)
+         super(BatchNormLayer, self).__init__(incoming, **kwargs)
 
-        if axes == 'auto':
+         if axes == 'auto':
             # default: normalize over all but the second axis
             axes = (0,) + tuple(range(2, len(self.input_shape)))
-        elif isinstance(axes, int):
+         elif isinstance(axes, int):
             axes = (axes,)
-        self.axes = axes
+         self.axes = axes
 
-        self.epsilon = epsilon
-        self.alpha = alpha
+         self.epsilon = epsilon
+         self.alpha = alpha
 
         # create parameters, ignoring all dimensions in axes
-        shape = [size for axis, size in enumerate(self.input_shape)
+         shape = [size for axis, size in enumerate(self.input_shape)
                  if axis not in self.axes]
-        if any(size is None for size in shape):
+         if any(size is None for size in shape):
             raise ValueError("BatchNormLayer needs specified input sizes for "
-                             "all axes not normalized over.")
-        if beta is None:
+                                "all axes not normalized over.")
+         if beta is None:
             self.beta = None
-        else:
+         else:
             self.beta = self.add_param(beta, shape, 'beta',
-                                       trainable=True, regularizable=False)
-        if gamma is None:
+                                          trainable=True, regularizable=False)
+         if gamma is None:
             self.gamma = None
-        else:
+         else:
             self.gamma = self.add_param(gamma, shape, 'gamma',
-                                        trainable=True, regularizable=True)
-        self.mean = self.add_param(mean, shape, 'mean',
-                                   trainable=False, regularizable=False)
-        self.inv_std = self.add_param(inv_std, shape, 'inv_std',
+                                           trainable=True, regularizable=True)
+                                           
+         # if type is RNN, then need not to save the mean and var
+         if type is None:
+            self.mean = self.add_param(mean, shape, 'mean',
                                       trainable=False, regularizable=False)
+            self.inv_std = self.add_param(inv_std, shape, 'inv_std',
+                                         trainable=False, regularizable=False)
 
     def get_output_for(self, input, type=None, deterministic=False,
                        batch_norm_use_averages=None,
@@ -302,7 +305,7 @@ class BatchNormLayer(Layer):
                   # and applied, but the computation will be optimized away):
                   mean += 0 * running_mean
                   inv_std += 0 * running_inv_std
-         else:
+         elif type is 'sequential':
             # perform sequential-wise batch normalization, which is suitable for RNN
             # use the statistic of all the data in a mini-batch
             input_mean = input.mean((0,1))
