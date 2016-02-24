@@ -269,7 +269,7 @@ class BatchNormLayer(Layer):
     def get_output_for(self, input, type=None, deterministic=False,
                        batch_norm_use_averages=None,
                        batch_norm_update_averages=None, **kwargs):
-         if type is not None:
+         if type is None:
             input_mean = input.mean(self.axes)
             input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
             # Decide whether to use the stored averages or mini-batch statistics
