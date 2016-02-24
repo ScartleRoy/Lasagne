@@ -67,6 +67,7 @@ from ..utils import unroll_scan
 from .base import MergeLayer, Layer
 from .input import InputLayer
 from .dense import DenseLayer
+from .normalization import BatchNormLayer
 from . import helper
 
 __all__ = [
