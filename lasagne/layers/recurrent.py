@@ -987,11 +987,6 @@ class LSTMLayer(MergeLayer):
         input = input.dimshuffle(1, 0, 2)
         seq_len, num_batch, _ = input.shape
 
-        # Stack input weight matrices into a (num_inputs, 4*num_units)
-        # matrix, which speeds up computation
-        W_in_stacked = T.concatenate(
-            [self.W_in_to_ingate, self.W_in_to_forgetgate,
-             self.W_in_to_cell, self.W_in_to_outgate], axis=1)
 
         # Same for hidden weight matrices
         W_hid_stacked = T.concatenate(
@@ -1009,10 +1004,14 @@ class LSTMLayer(MergeLayer):
             # W_in_stacked is (n_features, 4*num_units). input is then
             # (n_time_steps, n_batch, 4*num_units).
             if not self.batch_norm:
+                # Stack input weight matrices into a (num_inputs, 4*num_units)
+                # matrix, which speeds up computation
+                W_in_stacked = T.concatenate(
+                    [self.W_in_to_ingate, self.W_in_to_forgetgate,
+                     self.W_in_to_cell, self.W_in_to_outgate], axis=1)
+                     
                 input = T.dot(input, W_in_stacked) + b_stacked
             else:
-                print input.ndim
-                print input.shape
                 input_i = self.bn_i.get_output_for(T.dot(input, self.W_in_to_ingate), type='sequential', **kwargs)
                 input_f = self.bn_f.get_output_for(T.dot(input, self.W_in_to_forgetgate), type='sequential', **kwargs)
                 input_c = self.bn_c.get_output_for(T.dot(input, self.W_in_to_cell), type='sequential', **kwargs)
