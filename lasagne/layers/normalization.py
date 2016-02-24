@@ -305,6 +305,19 @@ class BatchNormLayer(Layer):
                   # and applied, but the computation will be optimized away):
                   mean += 0 * running_mean
                   inv_std += 0 * running_inv_std
+                  
+            # prepare dimshuffle pattern inserting broadcastable axes as needed
+            param_axes = iter(range(input.ndim - len(self.axes)))
+            pattern = ['x' if input_axis in self.axes
+                      else next(param_axes)
+                      for input_axis in range(input.ndim)]
+   
+            # apply dimshuffle pattern to all parameters
+            beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
+            gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
+            mean = mean.dimshuffle(pattern)
+            inv_std = inv_std.dimshuffle(pattern)
+            
          elif type is 'sequential':
             # perform sequential-wise batch normalization, which is suitable for RNN
             # use the statistic of all the data in a mini-batch
@@ -313,18 +326,6 @@ class BatchNormLayer(Layer):
             mean = theano.clone(input_mean, share_inputs=False)
             inv_std = theano.clone(input_inv_std, share_inputs=False)
             
-
-         # prepare dimshuffle pattern inserting broadcastable axes as needed
-         param_axes = iter(range(input.ndim - len(self.axes)))
-         pattern = ['x' if input_axis in self.axes
-                   else next(param_axes)
-                   for input_axis in range(input.ndim)]
-
-         # apply dimshuffle pattern to all parameters
-         beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
-         gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
-         mean = mean.dimshuffle(pattern)
-         inv_std = inv_std.dimshuffle(pattern)
 
          # normalize
          normalized = (input - mean) * (gamma * inv_std) + beta
