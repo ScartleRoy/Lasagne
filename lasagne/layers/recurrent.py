@@ -797,6 +797,7 @@ class LSTMLayer(MergeLayer):
                  mask_input=None,
                  only_return_final=False,
                  batch_norm=True,
+                 batch_size=100,
                  **kwargs):
 
         # This layer inherits from a MergeLayer, because it can have four
@@ -878,9 +879,9 @@ class LSTMLayer(MergeLayer):
         
         if batch_norm:
             # add 4 batch norm layers for i, f, c and o
-            num_batch = input_shape[0]
-            n_time_step = input_shape[1]
-            bn_shape = (n_time_step, num_batch, num_units)
+            print input_shape
+            n_time_step = input_shape[0]
+            bn_shape = (n_time_step, batch_size, num_units)
             print bn_shape
             
             self.bn_i = BatchNormLayer(bn_shape, axes=(0,1))  # create BN layer for correct input shape
