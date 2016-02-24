@@ -323,8 +323,8 @@ class BatchNormLayer(Layer):
             # use the statistic of all the data in a mini-batch
             input_mean = input.mean((0,1))
             input_inv_std = T.inv(T.sqrt(input.var((0,1)) + self.epsilon))
-            mean = theano.clone(input_mean, share_inputs=False)
-            inv_std = theano.clone(input_inv_std, share_inputs=False)
+            mean = input_mean
+            inv_std = input_inv_std
             beta = 0 if self.beta is None else self.beta
             gamma = 1 if self.gamma is None else self.gamma
             
