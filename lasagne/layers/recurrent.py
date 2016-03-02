@@ -1017,7 +1017,7 @@ class LSTMLayer(MergeLayer):
                 input_c = self.bn_c.get_output_for(T.dot(input, self.W_in_to_cell), type='sequential', **kwargs)
                 input_o = self.bn_o.get_output_for(T.dot(input, self.W_in_to_outgate), type='sequential', **kwargs)
                 # concatenate
-                input = T.concatenate([input_i, input_f, input_c, input_o], axis=2)
+                input = T.concatenate([input_i, input_f, input_c, input_o], axis=2) + b_stacked
 
         # At each call to scan, input_n will be (n_time_steps, 4*num_units).
         # We define a slicing function that extract the input to each LSTM gate
