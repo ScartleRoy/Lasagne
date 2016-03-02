@@ -860,31 +860,34 @@ class LSTMLayer(MergeLayer):
                                    name="W_in_to_{}".format(gate_name)),
                     self.add_param(gate.W_hid, (num_units, num_units),
                                    name="W_hid_to_{}".format(gate_name)),
-                    self.add_param(gate.b, (num_units,),
-                                   name="b_{}".format(gate_name),
-                                   regularizable=False),
                     gate.nonlinearity)
+        
+        def add_gate_params_b(gate, gate_name):
+            return self.add_param(gate.b, (num_units,), name="b_{}".format(gate_name), regularizable=False)
     
         # Add in parameters from the supplied Gate instances
-        (self.W_in_to_ingate, self.W_hid_to_ingate, self.b_ingate,
+        (self.W_in_to_ingate, self.W_hid_to_ingate,
         self.nonlinearity_ingate) = add_gate_params(ingate, 'ingate')
     
-        (self.W_in_to_forgetgate, self.W_hid_to_forgetgate, self.b_forgetgate,
+        (self.W_in_to_forgetgate, self.W_hid_to_forgetgate,
         self.nonlinearity_forgetgate) = add_gate_params(forgetgate,
                                                              'forgetgate')
     
-        (self.W_in_to_cell, self.W_hid_to_cell, self.b_cell,
+        (self.W_in_to_cell, self.W_hid_to_cell,
         self.nonlinearity_cell) = add_gate_params(cell, 'cell')
     
-        (self.W_in_to_outgate, self.W_hid_to_outgate, self.b_outgate,
+        (self.W_in_to_outgate, self.W_hid_to_outgate,
         self.nonlinearity_outgate) = add_gate_params(outgate, 'outgate')
         
+        if not self.batch_norm:
+            # add b
+            self.b_ingate = add_gate_params_b(ingate, 'ingate')
+            self.b_forgetgate = add_gate_params_b(forgetgate, 'forgetgate')
+            self.b_cell = add_gate_params_b(cell, 'cell')
+            self.b_outgate = add_gate_params_b(outgate, 'outgate')
+            
+        
         if self.batch_norm:
-            # delete b
-            del self.b_ingate
-            del self.b_forgetgate
-            del self.b_cell
-            del self.b_outgate
             # add 4 batch norm layers for i, f, c and o
             n_time_step = input_shape[1]
             bn_shape = (n_time_step, batch_size, num_units)
@@ -1024,6 +1027,20 @@ class LSTMLayer(MergeLayer):
                 input_o = self.bn_o.get_output_for(T.dot(input, self.W_in_to_outgate), type='sequential', **kwargs)
                 # concatenate
                 input = T.concatenate([input_i, input_f, input_c, input_o], axis=2)
+                
+        else:
+            # Stack input weight matrices into a (num_inputs, 4*num_units)
+            # matrix, which speeds up computation
+            W_in_stacked = T.concatenate(
+                [self.W_in_to_ingate, self.W_in_to_forgetgate,
+                self.W_in_to_cell, self.W_in_to_outgate], axis=1)
+                
+            # Stack biases into a (4*num_units) vector
+            b_stacked = T.concatenate(
+                [self.b_ingate, self.b_forgetgate,
+                self.b_cell, self.b_outgate], axis=0)
+                         
+            input = T.dot(input, W_in_stacked) + b_stacked
 
         # At each call to scan, input_n will be (n_time_steps, 4*num_units).
         # We define a slicing function that extract the input to each LSTM gate
