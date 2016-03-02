@@ -1017,11 +1017,6 @@ class LSTMLayer(MergeLayer):
                 input_c = self.bn_c.get_output_for(T.dot(input, self.W_in_to_cell), type='sequential', **kwargs)
                 input_o = self.bn_o.get_output_for(T.dot(input, self.W_in_to_outgate), type='sequential', **kwargs)
                 # concatenate
-                # delete b
-                del self.b_ingate
-                del self.b_forgetgate
-                del self.b_cell
-                del self.b_outgate
                 input = T.concatenate([input_i, input_f, input_c, input_o], axis=2)
 
         # At each call to scan, input_n will be (n_time_steps, 4*num_units).
