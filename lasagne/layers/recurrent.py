@@ -880,6 +880,11 @@ class LSTMLayer(MergeLayer):
         self.nonlinearity_outgate) = add_gate_params(outgate, 'outgate')
         
         if self.batch_norm:
+            # delete b
+            del self.b_ingate
+            del self.b_forgetgate
+            del self.b_cell
+            del self.b_outgate
             # add 4 batch norm layers for i, f, c and o
             n_time_step = input_shape[1]
             bn_shape = (n_time_step, batch_size, num_units)
@@ -987,16 +992,12 @@ class LSTMLayer(MergeLayer):
         input = input.dimshuffle(1, 0, 2)
         seq_len, num_batch, _ = input.shape
 
-
         # Same for hidden weight matrices
         W_hid_stacked = T.concatenate(
             [self.W_hid_to_ingate, self.W_hid_to_forgetgate,
-             self.W_hid_to_cell, self.W_hid_to_outgate], axis=1)
-
-        # Stack biases into a (4*num_units) vector
-        b_stacked = T.concatenate(
-            [self.b_ingate, self.b_forgetgate,
-             self.b_cell, self.b_outgate], axis=0)
+            self.W_hid_to_cell, self.W_hid_to_outgate], axis=1)
+    
+            
 
         if self.precompute_input:
             # Because the input is given for all time steps, we can
@@ -1009,7 +1010,12 @@ class LSTMLayer(MergeLayer):
                 W_in_stacked = T.concatenate(
                     [self.W_in_to_ingate, self.W_in_to_forgetgate,
                      self.W_in_to_cell, self.W_in_to_outgate], axis=1)
-                     
+                
+                # Stack biases into a (4*num_units) vector
+                b_stacked = T.concatenate(
+                    [self.b_ingate, self.b_forgetgate,
+                     self.b_cell, self.b_outgate], axis=0)
+                         
                 input = T.dot(input, W_in_stacked) + b_stacked
             else:
                 input_i = self.bn_i.get_output_for(T.dot(input, self.W_in_to_ingate), type='sequential', **kwargs)
@@ -1017,7 +1023,7 @@ class LSTMLayer(MergeLayer):
                 input_c = self.bn_c.get_output_for(T.dot(input, self.W_in_to_cell), type='sequential', **kwargs)
                 input_o = self.bn_o.get_output_for(T.dot(input, self.W_in_to_outgate), type='sequential', **kwargs)
                 # concatenate
-                input = T.concatenate([input_i, input_f, input_c, input_o], axis=2) + b_stacked
+                input = T.concatenate([input_i, input_f, input_c, input_o], axis=2)
 
         # At each call to scan, input_n will be (n_time_steps, 4*num_units).
         # We define a slicing function that extract the input to each LSTM gate
