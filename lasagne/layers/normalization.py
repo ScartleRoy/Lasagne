@@ -321,8 +321,8 @@ class BatchNormLayer(Layer):
          elif type is 'sequential':
             # perform sequential-wise batch normalization, which is suitable for RNN
             # use the statistic of all the data in a mini-batch
-            input_mean = input.mean((0,1))
-            input_inv_std = T.inv(T.sqrt(input.var((0,1)) + self.epsilon))
+            input_mean = input.mean(self.axes)
+            input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
             # prepare dimshuffle pattern inserting broadcastable axes as needed
             param_axes = iter(range(input.ndim - len(self.axes)))
             pattern = ['x' if input_axis in self.axes
