@@ -890,7 +890,7 @@ class LSTMLayer(MergeLayer):
         if self.batch_norm:
             # add 4 batch norm layers for i, f, c and o
             n_time_step = input_shape[1]
-            bn_shape = (n_time_step, batch_size, num_units)
+            bn_shape = (n_time_step, self.batch_size, num_units)
             
             self.bn_i = BatchNormLayer(bn_shape, type='LSTM', axes=(0,1))  # create BN layer for correct input shape
             self.bn_f = BatchNormLayer(bn_shape, type='LSTM', axes=(0,1))  # create BN layer for correct input shape
@@ -1039,8 +1039,6 @@ class LSTMLayer(MergeLayer):
             b_stacked = T.concatenate(
                 [self.b_ingate, self.b_forgetgate,
                 self.b_cell, self.b_outgate], axis=0)
-                         
-            input = T.dot(input, W_in_stacked) + b_stacked
 
         # At each call to scan, input_n will be (n_time_steps, 4*num_units).
         # We define a slicing function that extract the input to each LSTM gate
