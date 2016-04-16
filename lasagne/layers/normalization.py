@@ -340,22 +340,22 @@ class BatchNormLayer(Layer):
                   mean = self.mean
                   inv_std = self.inv_std
                else:
-                  # prepare dimshuffle pattern inserting broadcastable axes as needed
-                  param_axes = iter(range(input.ndim - len(self.axes)))
-                  pattern = ['x' if input_axis in self.axes
-                            else next(param_axes)
-                            for input_axis in range(input.ndim)]
-                            
-                  mean = input_mean.dimshuffle(pattern)
-                  inv_std = input_inv_std.dimshuffle(pattern)
-                  beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
-                  gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
-                  
-                  self.mean = (self.mean * self.n_batch + mean) / (self.n_batch + 1)
-                  self.inv_std = (self.inv_std * self.n_batch + inv_std) / (self.n_batch + 1)
+                  self.mean = (self.mean * self.n_batch + input_mean) / (self.n_batch + 1)
+                  self.inv_std = (self.inv_std * self.n_batch + input_inv_std) / (self.n_batch + 1)
                   self.n_batch += 1
+                  
+                  mean = input_mean
+                  inv_std = input_inv_std
             
-
+            # prepare dimshuffle pattern inserting broadcastable axes as needed
+            param_axes = iter(range(input.ndim - len(self.axes)))
+            pattern = ['x' if input_axis in self.axes else next(param_axes) for input_axis in range(input.ndim)]
+                            
+            mean = mean.dimshuffle(pattern)
+            inv_std = inv_std.dimshuffle(pattern)
+            beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
+            gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
+         
          # normalize
          normalized = (input - mean) * (gamma * inv_std) + beta
          return normalized
