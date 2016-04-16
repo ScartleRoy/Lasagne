@@ -335,15 +335,30 @@ class BatchNormLayer(Layer):
             if batch_norm_use_averages is None:
                batch_norm_use_averages = deterministic
                use_averages = batch_norm_use_averages
+               
+               if batch_norm_update_averages is None:
+                  batch_norm_update_averages = not deterministic
+               update_averages = batch_norm_update_averages
       
+               if update_averages:
+                  running_mean = theano.clone(self.mean, share_inputs=False)
+                  running_inv_std = theano.clone(self.inv_std, share_inputs=False)
+                  running_n_batch = theano.clone(self.n_batch, share_inputs=False)
+                  
+                  # set a default update for them:
+                  running_mean.default_update = (running_mean * self.n_batch + input_mean) / (self.n_batch + 1)
+                  running_inv_std.default_update = (running_inv_std * self.n_batch + input_inv_std) / (self.n_batch + 1)
+                  running_n_batch.default_update = running_n_batch + 1
+                  # and make sure they end up in the graph without participating in
+                  # the computation (this way their default_update will be collected
+                  # and applied, but the computation will be optimized away):
+                  mean += 0 * running_mean
+                  inv_std += 0 * running_inv_std
+               
                if use_averages:
                   mean = self.mean
                   inv_std = self.inv_std
                else:
-                  self.mean = (self.mean * self.n_batch + input_mean) / (self.n_batch + 1)
-                  self.inv_std = (self.inv_std * self.n_batch + input_inv_std) / (self.n_batch + 1)
-                  self.n_batch += 1
-                  
                   mean = input_mean
                   inv_std = input_inv_std
             
