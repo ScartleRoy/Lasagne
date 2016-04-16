@@ -339,7 +339,14 @@ class BatchNormLayer(Layer):
                if batch_norm_update_averages is None:
                   batch_norm_update_averages = not deterministic
                update_averages = batch_norm_update_averages
-      
+               
+               if use_averages:
+                  mean = self.mean
+                  inv_std = self.inv_std
+               else:
+                  mean = input_mean
+                  inv_std = input_inv_std
+                  
                if update_averages:
                   running_mean = theano.clone(self.mean, share_inputs=False)
                   running_inv_std = theano.clone(self.inv_std, share_inputs=False)
@@ -354,13 +361,6 @@ class BatchNormLayer(Layer):
                   # and applied, but the computation will be optimized away):
                   mean += 0 * running_mean
                   inv_std += 0 * running_inv_std
-               
-               if use_averages:
-                  mean = self.mean
-                  inv_std = self.inv_std
-               else:
-                  mean = input_mean
-                  inv_std = input_inv_std
             
             # prepare dimshuffle pattern inserting broadcastable axes as needed
             param_axes = iter(range(input.ndim - len(self.axes)))
