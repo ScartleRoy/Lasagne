@@ -276,27 +276,27 @@ class BatchNormLayer(Layer):
     def get_output_for(self, input, type=None, deterministic=False,
                        batch_norm_use_averages=None,
                        batch_norm_update_averages=None, **kwargs):
-         if type is None:
-            input_mean = input.mean(self.axes)
-            input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
-            # Decide whether to use the stored averages or mini-batch statistics
-            if batch_norm_use_averages is None:
-               batch_norm_use_averages = deterministic
-               use_averages = batch_norm_use_averages
+         input_mean = input.mean(self.axes)
+         input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
+         # Decide whether to use the stored averages or mini-batch statistics
+         if batch_norm_use_averages is None:
+            batch_norm_use_averages = deterministic
+            use_averages = batch_norm_use_averages
       
-               if use_averages:
-                  mean = self.mean
-                  inv_std = self.inv_std
-               else:
-                  mean = input_mean
-                  inv_std = input_inv_std
+            if use_averages:
+               mean = self.mean
+               inv_std = self.inv_std
+            else:
+               mean = input_mean
+               inv_std = input_inv_std
       
-              # Decide whether to update the stored averages
-               if batch_norm_update_averages is None:
-                  batch_norm_update_averages = not deterministic
-               update_averages = batch_norm_update_averages
+            # Decide whether to update the stored averages
+            if batch_norm_update_averages is None:
+               batch_norm_update_averages = not deterministic
+            update_averages = batch_norm_update_averages
       
-               if update_averages:
+            if update_averages:
+               if type is None:
                   # Trick: To update the stored statistics, we create memory-aliased
                   # clones of the stored statistics:
                   running_mean = theano.clone(self.mean, share_inputs=False)
@@ -307,6 +307,21 @@ class BatchNormLayer(Layer):
                   running_inv_std.default_update = ((1 - self.alpha) *
                                                     running_inv_std +
                                                     self.alpha * input_inv_std)
+                  # and make sure they end up in the graph without participating in
+                  # the computation (this way their default_update will be collected
+                  # and applied, but the computation will be optimized away):
+                  mean += 0 * running_mean
+                  inv_std += 0 * running_inv_std
+               elif type is 'sequential':
+                  # Trick: To update the stored statistics, we create memory-aliased
+                  # clones of the stored statistics:
+                  running_mean = theano.clone(self.mean, share_inputs=False)
+                  running_inv_std = theano.clone(self.inv_std, share_inputs=False)
+                  running_n_batch = theano.clone(self.n_batch, share_inputs=False)
+                  # set a default update for them:
+                  running_mean.default_update = (running_mean * running_n_batch + input_mean) / (running_n_batch + 1)
+                  running_inv_std.default_update = (running_inv_std * running_n_batch + input_inv_std) / (running_n_batch + 1)
+                  running_n_batch.default_update = running_n_batch + 1
                   # and make sure they end up in the graph without participating in
                   # the computation (this way their default_update will be collected
                   # and applied, but the computation will be optimized away):
@@ -325,52 +340,6 @@ class BatchNormLayer(Layer):
             mean = mean.dimshuffle(pattern)
             inv_std = inv_std.dimshuffle(pattern)
             
-         elif type is 'sequential':
-            # perform sequential-wise batch normalization, which is suitable for RNN
-            # use the statistic of all the data in a mini-batch
-            
-            input_mean = input.mean(self.axes)
-            input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
-            # Decide whether to use the stored averages or mini-batch statistics
-            if batch_norm_use_averages is None:
-               batch_norm_use_averages = deterministic
-               use_averages = batch_norm_use_averages
-               
-               if batch_norm_update_averages is None:
-                  batch_norm_update_averages = not deterministic
-               update_averages = batch_norm_update_averages
-               
-               if use_averages:
-                  mean = self.mean
-                  inv_std = self.inv_std
-               else:
-                  mean = input_mean
-                  inv_std = input_inv_std
-                  
-               if update_averages:
-                  running_mean = theano.clone(self.mean, share_inputs=False)
-                  running_inv_std = theano.clone(self.inv_std, share_inputs=False)
-                  running_n_batch = theano.clone(self.n_batch, share_inputs=False)
-                  
-                  # set a default update for them:
-                  running_mean.default_update = (running_mean * self.n_batch + input_mean) / (self.n_batch + 1)
-                  running_inv_std.default_update = (running_inv_std * self.n_batch + input_inv_std) / (self.n_batch + 1)
-                  running_n_batch.default_update = running_n_batch + 1
-                  # and make sure they end up in the graph without participating in
-                  # the computation (this way their default_update will be collected
-                  # and applied, but the computation will be optimized away):
-                  mean += 0 * running_mean
-                  inv_std += 0 * running_inv_std
-            
-            # prepare dimshuffle pattern inserting broadcastable axes as needed
-            param_axes = iter(range(input.ndim - len(self.axes)))
-            pattern = ['x' if input_axis in self.axes else next(param_axes) for input_axis in range(input.ndim)]
-                            
-            mean = mean.dimshuffle(pattern)
-            inv_std = inv_std.dimshuffle(pattern)
-            beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
-            gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
-         
          # normalize
          normalized = (input - mean) * (gamma * inv_std) + beta
          return normalized
