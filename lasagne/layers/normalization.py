@@ -269,7 +269,7 @@ class BatchNormLayer(Layer):
                                          trainable=False, regularizable=False)
             self.inv_std = self.add_param(inv_std, shape, 'inv_std',
                                             trainable=False, regularizable=False)
-            self.n_batch = self.add_param(n_batch, (1,), 'n_batch',
+            self.n_batch = self.add_param(n_batch, (1), 'n_batch',
                                          trainable=False, regularizable=False)
             
 
