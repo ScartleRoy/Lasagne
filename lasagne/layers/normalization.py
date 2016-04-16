@@ -269,8 +269,7 @@ class BatchNormLayer(Layer):
                                          trainable=False, regularizable=False)
             self.inv_std = self.add_param(inv_std, shape, 'inv_std',
                                             trainable=False, regularizable=False)
-            self.n_batch = self.add_param(n_batch, (1), 'n_batch',
-                                         trainable=False, regularizable=False)
+            self.n_batch = 0
             
 
     def get_output_for(self, input, type=None, deterministic=False,
@@ -317,16 +316,15 @@ class BatchNormLayer(Layer):
                   # clones of the stored statistics:
                   running_mean = theano.clone(self.mean, share_inputs=False)
                   running_inv_std = theano.clone(self.inv_std, share_inputs=False)
-                  running_n_batch = theano.clone(self.n_batch, share_inputs=False)
                   # set a default update for them:
-                  running_mean.default_update = (running_mean * running_n_batch + input_mean) / (running_n_batch + 1)
-                  running_inv_std.default_update = (running_inv_std * running_n_batch + input_inv_std) / (running_n_batch + 1)
-                  running_n_batch.default_update = running_n_batch + 1
+                  running_mean.default_update = (running_mean * self.n_batch + input_mean) / (self.n_batch + 1)
+                  running_inv_std.default_update = (running_inv_std * self.n_batch + input_inv_std) / (self.n_batch + 1)
                   # and make sure they end up in the graph without participating in
                   # the computation (this way their default_update will be collected
                   # and applied, but the computation will be optimized away):
                   mean += 0 * running_mean
                   inv_std += 0 * running_inv_std
+                  self.n_batch += 1
                   
             # prepare dimshuffle pattern inserting broadcastable axes as needed
             param_axes = iter(range(input.ndim - len(self.axes)))
