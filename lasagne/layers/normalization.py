@@ -227,9 +227,9 @@ class BatchNormLayer(Layer):
            Batch Normalization: Accelerating Deep Network Training by Reducing
            Internal Covariate Shift. http://arxiv.org/abs/1502.03167.
     """
-    def __init__(self, incoming, type=None, axes='auto', epsilon=1e-4, alpha=0.1,
+    def __init__(self, incoming, type=None, axes='auto', epsilon=1e-10, alpha=0.1,
                  beta=init.Constant(0), gamma=init.Constant(1), mean=init.Constant(0),
-                 inv_std=init.Constant(1), **kwargs):
+                 n_batch=init.Constant(0), inv_std=init.Constant(1), **kwargs):
          super(BatchNormLayer, self).__init__(incoming, **kwargs)
 
          if axes == 'auto':
@@ -264,6 +264,11 @@ class BatchNormLayer(Layer):
                                          trainable=False, regularizable=False)
             self.inv_std = self.add_param(inv_std, shape, 'inv_std',
                                             trainable=False, regularizable=False)
+         else:
+            self.mean = self.add_param(mean, shape, 'mean',
+                                         trainable=False, regularizable=False)
+            self.n_batch = self.add_param(n_batch, (1,), 'n_batch',
+                                         trainable=False, regularizable=False)
             
 
     def get_output_for(self, input, type=None, deterministic=False,
@@ -321,18 +326,31 @@ class BatchNormLayer(Layer):
          elif type is 'sequential':
             # perform sequential-wise batch normalization, which is suitable for RNN
             # use the statistic of all the data in a mini-batch
+            
             input_mean = input.mean(self.axes)
             input_inv_std = T.inv(T.sqrt(input.var(self.axes) + self.epsilon))
-            # prepare dimshuffle pattern inserting broadcastable axes as needed
-            param_axes = iter(range(input.ndim - len(self.axes)))
-            pattern = ['x' if input_axis in self.axes
-                      else next(param_axes)
-                      for input_axis in range(input.ndim)]
-                      
-            mean = input_mean.dimshuffle(pattern)
-            inv_std = input_inv_std.dimshuffle(pattern)
-            beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
-            gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
+            # Decide whether to use the stored averages or mini-batch statistics
+            if batch_norm_use_averages is None:
+               batch_norm_use_averages = deterministic
+               use_averages = batch_norm_use_averages
+      
+               if use_averages:
+                  mean = self.mean
+                  inv_std = self.inv_std
+               else:
+                  # prepare dimshuffle pattern inserting broadcastable axes as needed
+                  param_axes = iter(range(input.ndim - len(self.axes)))
+                  pattern = ['x' if input_axis in self.axes
+                            else next(param_axes)
+                            for input_axis in range(input.ndim)]
+                            
+                  mean = input_mean.dimshuffle(pattern)
+                  inv_std = input_inv_std.dimshuffle(pattern)
+                  beta = 0 if self.beta is None else self.beta.dimshuffle(pattern)
+                  gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
+                  
+                  self.mean = (self.mean * self.n_batch + mean) / (self.n_batch + 1)
+                  self.n_batch += 1
             
 
          # normalize
