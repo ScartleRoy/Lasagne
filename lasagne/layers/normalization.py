@@ -267,6 +267,8 @@ class BatchNormLayer(Layer):
          else:
             self.mean = self.add_param(mean, shape, 'mean',
                                          trainable=False, regularizable=False)
+            self.inv_std = self.add_param(inv_std, shape, 'inv_std',
+                                            trainable=False, regularizable=False)
             self.n_batch = self.add_param(n_batch, (1,), 'n_batch',
                                          trainable=False, regularizable=False)
             
@@ -350,6 +352,7 @@ class BatchNormLayer(Layer):
                   gamma = 1 if self.gamma is None else self.gamma.dimshuffle(pattern)
                   
                   self.mean = (self.mean * self.n_batch + mean) / (self.n_batch + 1)
+                  self.inv_std = (self.inv_std * self.n_batch + inv_std) / (self.n_batch + 1)
                   self.n_batch += 1
             
 
